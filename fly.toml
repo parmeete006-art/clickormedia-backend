@@ -1,0 +1,27 @@
+# app name must be globally unique on Fly — change it before first deploy:
+#   fly launch --no-deploy   (or just edit the line below)
+app = "clickor-media-backend"
+primary_region = "bom"  # Mumbai — pick the region closest to your team
+
+[build]
+
+[env]
+  PORT = "8080"
+  DB_DIALECT = "sqlite"
+  DB_STORAGE = "/data/clickormedia.sqlite"
+  UPLOAD_DIR = "/data/uploads"
+
+[[mounts]]
+  source = "clickormedia_data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

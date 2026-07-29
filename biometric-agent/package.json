@@ -1,0 +1,20 @@
+{
+  "name": "clickor-media-biometric-agent",
+  "version": "1.0.0",
+  "private": true,
+  "main": "agent.js",
+  "scripts": {
+    "start": "node agent.js",
+    "watch": "node watch-imports.js",
+    "fetch": "node fetch-from-tracker.js",
+    "sync-export-folder": "node sync-export-folder.js",
+    "daily-report": "node daily-report-import.js"
+  },
+  "dependencies": {
+    "axios": "^1.18.1",
+    "chokidar": "^3.5.3",
+    "dotenv": "^16.6.1",
+    "xlsx": "^0.18.5",
+    "zkteco": "^1.10.21"
+  }
+}

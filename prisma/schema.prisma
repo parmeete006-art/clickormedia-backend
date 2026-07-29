@@ -1,0 +1,161 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Employee {
+  id              String    @id
+  name            String
+  email           String    @unique
+  passwordHash    String
+  role            EmployeeRole @default(employee)
+  department      String?
+  designation     String?
+  phone           String?
+  managerName     String?
+  joinDate        DateTime?
+  active          Boolean   @default(true)
+  biometricUserId String?   @unique
+  bankName        String?
+  bankAccountNumber String?
+  bankIfsc        String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  attendance      Attendance[]
+  documents       Document[]
+  leaveRequests   LeaveRequest[]
+  salaryStructure SalaryStructure?
+  payslips       Payslip[]
+}
+
+enum EmployeeRole {
+  employee
+  hr
+  admin
+}
+
+model Attendance {
+  id         Int      @id @default(autoincrement())
+  employeeId String
+  date       DateTime
+  checkIn    DateTime?
+  checkOut   DateTime?
+  status     AttendanceStatus @default(Present)
+  source     AttendanceSource @default(manual)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  employee   Employee @relation(fields: [employeeId], references: [id])
+
+  @@unique([employeeId, date])
+  @@map("attendance")
+}
+
+enum AttendanceStatus {
+  Present
+  Absent
+  Late
+  Leave
+  Weekend
+  Holiday
+}
+
+enum AttendanceSource {
+  manual
+  biometric_device
+  admin
+}
+
+model Document {
+  id         Int      @id @default(autoincrement())
+  employeeId String
+  name       String
+  category   DocumentCategory @default(Other)
+  filePath   String
+  fileSize   Int?
+  uploadedBy String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  employee   Employee @relation(fields: [employeeId], references: [id])
+
+  @@map("documents")
+}
+
+enum DocumentCategory {
+  ID_Proof
+  Contracts
+  Payslips
+  Certificates
+  Other
+}
+
+model LeaveRequest {
+  id          Int      @id @default(autoincrement())
+  employeeId  String
+  startDate   DateTime
+  endDate     DateTime
+  reason      String?
+  status      LeaveStatus @default(Pending)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  employee    Employee @relation(fields: [employeeId], references: [id])
+}
+
+enum LeaveStatus {
+  Pending
+  Approved
+  Rejected
+}
+
+model SalaryStructure {
+  id              Int      @id @default(autoincrement())
+  employeeId      String   @unique
+  basic           Float    @default(0)
+  hra             Float    @default(0)
+  conveyance      Float    @default(0)
+  specialAllowance Float   @default(0)
+  providentFund   Float    @default(0)
+  professionalTax Float    @default(0)
+  tds             Float    @default(0)
+  currency        String   @default("₹")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  employee        Employee @relation(fields: [employeeId], references: [id])
+
+  @@map("salary_structures")
+}
+
+model Payslip {
+  id                Int      @id @default(autoincrement())
+  employeeId        String
+  month             Int
+  year              Int
+  gross             Float?
+  deductions        Float?
+  net               Float?
+  status            PayslipStatus @default(Processing)
+  generatedBy       String?
+  presentDays       Int      @default(0)
+  absentDays        Int      @default(0)
+  leaveDays         Int      @default(0)
+  chargeableLeaveDays Int    @default(0)
+  attendanceDeduction Float  @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  employee          Employee @relation(fields: [employeeId], references: [id])
+
+  @@unique([employeeId, month, year])
+  @@map("payslips")
+}
+
+enum PayslipStatus {
+  Processing
+  Paid
+}

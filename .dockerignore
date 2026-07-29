@@ -1,0 +1,11 @@
+node_modules
+data
+src/uploads
+.env
+.env.*
+!.env.example
+*.log
+.git
+prisma
+prisma.config.js.bak
+prisma.config.mjs.bak

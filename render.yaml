@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: clickor-media-backend
+    runtime: node
+    plan: free
+    region: singapore # closest free-tier region to India; change if needed
+    buildCommand: npm ci
+    startCommand: npm start
+    envVars:
+      - key: PORT
+        value: 10000 # Render sets/expects this; server.js already reads process.env.PORT
+      - key: JWT_SECRET
+        sync: false # set manually in the Render dashboard, not committed here
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: BIOMETRIC_WEBHOOK_SECRET
+        sync: false
+      - key: DATABASE_URL
+        sync: false # your Supabase connection string
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_STORAGE_BUCKET
+        value: documents

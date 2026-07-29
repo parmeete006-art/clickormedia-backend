@@ -1,0 +1,9 @@
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '.env') });
+
+module.exports = {
+  client: {
+    adapter: 'sqlite',
+    url: process.env.DATABASE_URL || `file:${path.resolve(__dirname, process.env.DB_STORAGE || './data/clickormedia.sqlite')}`,
+  },
+};
