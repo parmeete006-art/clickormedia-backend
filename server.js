@@ -50,22 +50,20 @@ async function ensureDefaultAccounts() {
   const hrPasswordHash = await bcrypt.hash('hr12345', 10);
   const employeePasswordHash = await bcrypt.hash('password123', 10);
 
-  let adminUser = await AuthUser.findOne({ where: { email: adminEmail } });
+  const adminUser = await AuthUser.findOne({ where: { email: adminEmail } });
   if (!adminUser) {
-    adminUser = await AuthUser.create({
+    await AuthUser.create({
       name: 'Super Admin',
       email: adminEmail,
       passwordHash: adminPasswordHash,
       role: 'superadmin',
       active: true,
     });
-  } else {
-    await adminUser.update({ passwordHash: adminPasswordHash, active: true });
   }
 
-  let hrUser = await Employee.findOne({ where: { email: hrEmail } });
+  const hrUser = await Employee.findOne({ where: { email: hrEmail } });
   if (!hrUser) {
-    hrUser = await Employee.create({
+    await Employee.create({
       id: 'EMP-1000',
       name: 'Parneet Kaur',
       email: hrEmail,
@@ -77,13 +75,11 @@ async function ensureDefaultAccounts() {
       joinDate: '2022-01-10',
       active: true,
     });
-  } else {
-    await hrUser.update({ passwordHash: hrPasswordHash, active: true });
   }
 
-  let employeeUser = await Employee.findOne({ where: { email: employeeEmail } });
+  const employeeUser = await Employee.findOne({ where: { email: employeeEmail } });
   if (!employeeUser) {
-    employeeUser = await Employee.create({
+    await Employee.create({
       id: 'EMP-1042',
       name: 'Aman Gill',
       email: employeeEmail,
@@ -93,11 +89,9 @@ async function ensureDefaultAccounts() {
       designation: 'Digital Marketing Executive',
       phone: '+91 98765 43210',
       joinDate: '2023-03-14',
-      managerName: hrUser.name,
+      managerName: hrUser?.name || 'Parneet Kaur',
       active: true,
     });
-  } else {
-    await employeeUser.update({ passwordHash: employeePasswordHash, active: true });
   }
 }
 

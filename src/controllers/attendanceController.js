@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { Op, fn, col, where } = require('sequelize');
-const { Attendance, Employee } = require('../models/index.js');
+const { Attendance, Employee, sequelize } = require('../models/index.js');
 const XLSX = require('xlsx');
 const { buildAttendanceImportPayload } = require('../utils/attendanceImport.js');
 
@@ -34,6 +34,39 @@ function getAttendanceStatus(checkIn, checkOut) {
   return arrival > lateThreshold ? 'Late' : 'Present';
 }
 
+async function syncAttendanceSequence() {
+  try {
+    await sequelize.query(`
+      SELECT setval(
+        pg_get_serial_sequence('attendance', 'id'),
+        COALESCE((SELECT MAX(id) FROM attendance), 0) + 1,
+        false
+      );
+    `);
+  } catch (error) {
+    console.warn('Unable to sync attendance sequence:', error.message);
+  }
+}
+
+async function findOrCreateAttendanceRow(employeeId, date, defaults) {
+  try {
+    return await Attendance.findOrCreate({
+      where: { employeeId, date },
+      defaults,
+    });
+  } catch (error) {
+    const isIdCollision = error?.name === 'SequelizeUniqueConstraintError'
+      && error?.errors?.some((item) => item?.path === 'id');
+
+    if (!isIdCollision) throw error;
+
+    await syncAttendanceSequence();
+    const existing = await Attendance.findOne({ where: { employeeId, date } });
+    if (existing) return [existing, false];
+    return await Attendance.create(defaults);
+  }
+}
+
 async function myAttendance(req, res) {
   const { month, year } = req.query;
   const where = { employeeId: req.user.id };
@@ -61,9 +94,12 @@ async function myAttendance(req, res) {
 async function checkIn(req, res) {
   const now = new Date();
   const date = toDateKey(now);
-  const [row] = await Attendance.findOrCreate({
-    where: { employeeId: req.user.id, date },
-    defaults: { employeeId: req.user.id, date, checkIn: now, status: getAttendanceStatus(now, null), source: 'manual' },
+  const [row] = await findOrCreateAttendanceRow(req.user.id, date, {
+    employeeId: req.user.id,
+    date,
+    checkIn: now,
+    status: getAttendanceStatus(now, null),
+    source: 'manual',
   });
   if (!row.checkIn) {
     await row.update({ checkIn: now, status: getAttendanceStatus(now, row.checkOut), source: 'manual' });
@@ -131,14 +167,11 @@ async function biometricWebhook(req, res) {
       return res.status(400).json({ error: 'punchTime is required for present or late punches' });
     }
 
-    const [row] = await Attendance.findOrCreate({
-      where: { employeeId: employee.id, date },
-      defaults: {
-        employeeId: employee.id,
-        date,
-        status: parsedStatus,
-        source: 'attendance-tracker-import',
-      },
+    const [row] = await findOrCreateAttendanceRow(employee.id, date, {
+      employeeId: employee.id,
+      date,
+      status: parsedStatus,
+      source: 'attendance-tracker-import',
     });
 
     if (row.status !== parsedStatus || row.checkIn || row.checkOut) {
@@ -155,15 +188,12 @@ async function biometricWebhook(req, res) {
 
   const punch = new Date(punchTime);
   const punchDate = toDateKey(punch);
-  const [row] = await Attendance.findOrCreate({
-    where: { employeeId: employee.id, date: punchDate },
-    defaults: {
-      employeeId: employee.id,
-      date: punchDate,
-      checkIn: punch,
-      status: getAttendanceStatus(punch, null),
-      source: 'attendance-tracker-import',
-    },
+  const [row] = await findOrCreateAttendanceRow(employee.id, punchDate, {
+    employeeId: employee.id,
+    date: punchDate,
+    checkIn: punch,
+    status: getAttendanceStatus(punch, null),
+    source: 'attendance-tracker-import',
   });
 
   const punchMs = punch.getTime();
@@ -193,9 +223,11 @@ async function upsertAttendance(req, res) {
     return res.status(400).json({ error: 'employeeId, date, and status are required' });
   }
 
-  const [row] = await Attendance.findOrCreate({
-    where: { employeeId, date },
-    defaults: { employeeId, date, status, source: 'admin' },
+  const [row] = await findOrCreateAttendanceRow(employeeId, date, {
+    employeeId,
+    date,
+    status,
+    source: 'admin',
   });
 
   await row.update({
