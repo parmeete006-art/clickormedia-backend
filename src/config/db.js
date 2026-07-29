@@ -1,14 +1,16 @@
 const { Sequelize } = require('sequelize');
-const path = require('path');
 require('dotenv').config();
 
-const sqliteStorage = process.env.DB_STORAGE
-  || path.resolve(process.cwd(), 'data', 'clickormedia.sqlite')
-  || path.join(__dirname, '..', '..', 'data', 'clickormedia.sqlite');
+const databaseUrl = process.env.DATABASE_URL;
 
-const sequelize = new Sequelize({
-  dialect: 'sqlite',
-  storage: sqliteStorage,
+if (!databaseUrl) {
+  throw new Error('DATABASE_URL is required to connect to Postgres/Supabase.');
+}
+
+const isProduction = ['production', 'staging'].includes((process.env.NODE_ENV || '').toLowerCase());
+
+const sequelize = new Sequelize(databaseUrl, {
+  dialect: 'postgres',
   logging: false,
   pool: {
     max: 5,
@@ -17,8 +19,9 @@ const sequelize = new Sequelize({
     idle: 10000,
   },
   dialectOptions: {
-    timeout: 60000,
-    busyTimeout: 60000,
+    ssl: isProduction
+      ? { require: true, rejectUnauthorized: false }
+      : false,
   },
 });
 

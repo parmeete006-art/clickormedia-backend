@@ -1,8 +1,9 @@
 require('dotenv').config();
+const bcrypt = require('bcryptjs');
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const { sequelize, syncDatabase } = require('./src/models/index.js');
+const { sequelize, syncDatabase, AuthUser, Employee } = require('./src/models/index.js');
 
 const authRoutes = require('./src/routes/auth.js');
 const employeeRoutes = require('./src/routes/employees.js');
@@ -40,6 +41,66 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 4000;
 
+async function ensureDefaultAccounts() {
+  const adminEmail = 'admin@clickormedia.com';
+  const hrEmail = 'hr@clickormedia.com';
+  const employeeEmail = 'aman.gill@clickormedia.com';
+
+  const adminPasswordHash = await bcrypt.hash('admin12345', 10);
+  const hrPasswordHash = await bcrypt.hash('hr12345', 10);
+  const employeePasswordHash = await bcrypt.hash('password123', 10);
+
+  let adminUser = await AuthUser.findOne({ where: { email: adminEmail } });
+  if (!adminUser) {
+    adminUser = await AuthUser.create({
+      name: 'Super Admin',
+      email: adminEmail,
+      passwordHash: adminPasswordHash,
+      role: 'superadmin',
+      active: true,
+    });
+  } else {
+    await adminUser.update({ passwordHash: adminPasswordHash, active: true });
+  }
+
+  let hrUser = await Employee.findOne({ where: { email: hrEmail } });
+  if (!hrUser) {
+    hrUser = await Employee.create({
+      id: 'EMP-1000',
+      name: 'Parneet Kaur',
+      email: hrEmail,
+      passwordHash: hrPasswordHash,
+      role: 'hr',
+      department: 'Human Resources',
+      designation: 'HR Manager',
+      phone: '+91 98765 43210',
+      joinDate: '2022-01-10',
+      active: true,
+    });
+  } else {
+    await hrUser.update({ passwordHash: hrPasswordHash, active: true });
+  }
+
+  let employeeUser = await Employee.findOne({ where: { email: employeeEmail } });
+  if (!employeeUser) {
+    employeeUser = await Employee.create({
+      id: 'EMP-1042',
+      name: 'Aman Gill',
+      email: employeeEmail,
+      passwordHash: employeePasswordHash,
+      role: 'employee',
+      department: 'Growth & Performance',
+      designation: 'Digital Marketing Executive',
+      phone: '+91 98765 43210',
+      joinDate: '2023-03-14',
+      managerName: hrUser.name,
+      active: true,
+    });
+  } else {
+    await employeeUser.update({ passwordHash: employeePasswordHash, active: true });
+  }
+}
+
 async function initializeDatabase() {
   const maxAttempts = 5;
 
@@ -47,6 +108,7 @@ async function initializeDatabase() {
     try {
       await sequelize.authenticate();
       await syncDatabase();
+      await ensureDefaultAccounts();
       console.log('Database ready');
       return true;
     } catch (err) {
