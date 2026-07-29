@@ -41,41 +41,6 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 4000;
 
-async function ensureDefaultAccounts() {
-  const adminEmail = 'admin@clickormedia.com';
-  const hrEmail = 'hr@clickormedia.com';
-
-  const adminPasswordHash = await bcrypt.hash('admin12345', 10);
-  const hrPasswordHash = await bcrypt.hash('hr12345', 10);
-  const employeePasswordHash = await bcrypt.hash('password123', 10);
-
-  const adminUser = await AuthUser.findOne({ where: { email: adminEmail } });
-  if (!adminUser) {
-    await AuthUser.create({
-      name: 'Super Admin',
-      email: adminEmail,
-      passwordHash: adminPasswordHash,
-      role: 'superadmin',
-      active: true,
-    });
-  }
-
-  const hrUser = await Employee.findOne({ where: { email: hrEmail } });
-  if (!hrUser) {
-    await Employee.create({
-      id: 'EMP-1000',
-      name: 'Parneet Kaur',
-      email: hrEmail,
-      passwordHash: hrPasswordHash,
-      role: 'hr',
-      department: 'Human Resources',
-      designation: 'HR Manager',
-      phone: '+91 98765 43210',
-      joinDate: '2022-01-10',
-      active: true,
-    });
-  }
-}
 
 async function initializeDatabase() {
   const maxAttempts = 5;
