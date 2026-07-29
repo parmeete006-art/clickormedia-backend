@@ -1,6 +1,6 @@
 const { Op } = require('sequelize');
 const { SalaryStructure, Payslip, Employee, Attendance } = require('../models/index.js');
-const { computeGross, computeDeductions, computeNet, computeAttendanceDeduction, workingDaysInMonth, calculatePayrollForMonth, PAYROLL_DAYS_PER_MONTH } = require('../utils/payroll.js');
+const { computeGross, computeDeductions, computeNet, computeAttendanceDeduction, workingDaysInMonth, calculatePayrollForMonth, PAYROLL_DAYS_PER_MONTH, countSundaysInMonthForEmployee } = require('../utils/payroll.js');
 
 function withTotals(structure) {
   const s = structure.toJSON ? structure.toJSON() : structure;
@@ -63,6 +63,9 @@ async function generatePayslip(req, res) {
   const structure = await SalaryStructure.findOne({ where: { employeeId } });
   if (!structure) return res.status(400).json({ error: 'Set up a salary structure for this employee first' });
 
+  const employee = await Employee.findByPk(employeeId);
+  const joiningDate = employee?.joinDate || null;
+
   const monthNum = Number(month);
   const monthIndex = !Number.isNaN(monthNum) ? monthNum : null;
   
@@ -99,39 +102,43 @@ async function generatePayslip(req, res) {
   let leaveDays = 0;
   let halfDays = 0;
   let presentDays = 0;
+  let sundayDays = 0;
 
   for (let day = 1; day <= daysInMonth; day++) {
     const date = new Date(Number(year), monthIndex, day);
     const dayOfWeek = date.getDay(); // 0 = Sunday, 1-6 = Monday-Saturday
-    
-    // Check if it's a weekday (Monday to Saturday)
+
+    if (dayOfWeek === 0) {
+      const currentDate = new Date(Number(year), monthIndex, day);
+      const joinDate = joiningDate ? new Date(joiningDate) : null;
+      if (!joinDate || currentDate >= joinDate) {
+        sundayDays++;
+      }
+      continue;
+    }
+
     const isWeekday = dayOfWeek >= 1 && dayOfWeek <= 6;
-    
-    if (isWeekday) {
-      const record = attendanceRows.find(r => {
-        const d = new Date(r.date);
-        return d.getDate() === day && d.getMonth() === monthIndex && d.getFullYear() === Number(year);
-      });
-      
-      if (!record) {
-        // No record means absent
-        absentDays++;
-      } else if (record.status === 'Absent') {
-        absentDays++;
-      } else if (record.status === 'Leave') {
-        leaveDays++;
-      } else if (record.status === 'Present' || record.status === 'Late') {
-        // Check for half day (less than 4 hours)
-        if (record.checkIn && record.checkOut) {
-          const duration = (new Date(record.checkOut) - new Date(record.checkIn)) / 1000 / 60 / 60;
-          if (duration < 4) {
-            halfDays++;
-          } else {
-            presentDays++;
-          }
+    if (!isWeekday) continue;
+
+    const record = attendanceRows.find(r => {
+      const d = new Date(r.date);
+      return d.getDate() === day && d.getMonth() === monthIndex && d.getFullYear() === Number(year);
+    });
+
+    if (!record || record.status === 'Absent') {
+      absentDays++;
+    } else if (record.status === 'Leave') {
+      leaveDays++;
+    } else if (record.status === 'Present' || record.status === 'Late') {
+      if (record.checkIn && record.checkOut) {
+        const duration = (new Date(record.checkOut) - new Date(record.checkIn)) / 1000 / 60 / 60;
+        if (duration < 4) {
+          halfDays++;
         } else {
           presentDays++;
         }
+      } else {
+        presentDays++;
       }
     }
   }
@@ -144,6 +151,8 @@ async function generatePayslip(req, res) {
     leaveDays,
     halfDays,
     standardDeductions,
+    presentDays,
+    sundayDays,
   });
 
   const payload = {

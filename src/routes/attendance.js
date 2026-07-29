@@ -20,6 +20,6 @@ router.post('/import-report', requireRole('hr', 'admin'), upload.single('file'),
 router.post('/check-in', checkIn);
 router.post('/check-out', checkOut);
 router.get('/', requireRole('hr', 'admin', 'superadmin'), allAttendance);
-router.put('/manual', requireRole('hr', 'admin'), upsertAttendance);
+router.put('/manual', requireRole('hr', 'admin', 'superadmin'), upsertAttendance);
 
 module.exports = router;

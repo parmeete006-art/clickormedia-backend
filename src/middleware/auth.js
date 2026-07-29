@@ -16,8 +16,11 @@ function requireAuth(req, res, next) {
 
 /** Usage: requireRole('hr', 'admin') */
 function requireRole(...roles) {
+  const allowedRoles = roles.map((role) => String(role).trim().toLowerCase());
+
   return (req, res, next) => {
-    if (!req.user || !roles.includes(req.user.role)) {
+    const userRole = String(req.user?.role || '').trim().toLowerCase();
+    if (!req.user || !allowedRoles.includes(userRole)) {
       return res.status(403).json({ error: 'You do not have access to this resource' });
     }
     next();
