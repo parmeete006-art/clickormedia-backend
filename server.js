@@ -2,7 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const { syncDatabase } = require('./src/models/index.js');
+const { sequelize, syncDatabase } = require('./src/models/index.js');
 
 const authRoutes = require('./src/routes/auth.js');
 const employeeRoutes = require('./src/routes/employees.js');
@@ -40,11 +40,26 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 4000;
 
-syncDatabase()
-  .then(() => {
-    app.listen(PORT, () => console.log(`Clickor Media API running on http://localhost:${PORT}`));
-  })
-  .catch((err) => {
-    console.error('Failed to sync database:', err);
-    process.exit(1);
-  });
+async function initializeDatabase() {
+  const maxAttempts = 5;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      await sequelize.authenticate();
+      await syncDatabase();
+      console.log('Database ready');
+      return true;
+    } catch (err) {
+      console.error(`Database sync attempt ${attempt}/${maxAttempts} failed:`, err.message);
+      if (attempt === maxAttempts) {
+        console.warn('Continuing without initial database sync; the API will start in degraded mode.');
+        return false;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+    }
+  }
+}
+
+initializeDatabase().then(() => {
+  app.listen(PORT, () => console.log(`Clickor Media API running on http://localhost:${PORT}`));
+});

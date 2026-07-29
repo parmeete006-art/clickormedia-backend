@@ -9,6 +9,8 @@ services:
     envVars:
       - key: PORT
         value: 10000 # Render sets/expects this; server.js already reads process.env.PORT
+      - key: NODE_VERSION
+        value: 22
       - key: JWT_SECRET
         sync: false # set manually in the Render dashboard, not committed here
       - key: JWT_EXPIRES_IN

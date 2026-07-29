@@ -7,11 +7,19 @@ const configuredDialect = process.env.DB_DIALECT || (process.env.DATABASE_URL ? 
 let sequelize;
 
 if (process.env.DATABASE_URL || configuredDialect === 'postgres') {
-  sequelize = new Sequelize(process.env.DATABASE_URL, {
+  const parsedUrl = new URL(process.env.DATABASE_URL || 'postgres://localhost:5432/postgres');
+
+  sequelize = new Sequelize({
     dialect: 'postgres',
+    host: parsedUrl.hostname,
+    port: Number(parsedUrl.port || 5432),
+    username: decodeURIComponent(parsedUrl.username),
+    password: decodeURIComponent(parsedUrl.password),
+    database: parsedUrl.pathname.replace(/^\/+/, ''),
     logging: false,
     dialectOptions: {
       ssl: { require: true, rejectUnauthorized: false },
+      family: 4,
     },
     pool: { max: 5, min: 0, acquire: 60000, idle: 10000 },
   });
