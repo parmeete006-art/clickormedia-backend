@@ -19,6 +19,8 @@ function computeNet(structure) {
   return computeGross(structure) - computeDeductions(structure);
 }
 
+const PAYROLL_DAYS_PER_MONTH = 30;
+
 // One leave day is treated as a paid allowance.
 // Deductions apply only to absences (and half-days on absences).
 const FREE_LEAVE_DAYS_PER_MONTH = 1;
@@ -32,6 +34,30 @@ function workingDaysInMonth(month, year) {
     if (dow !== 0 && dow !== 6) count++;
   }
   return count;
+}
+
+function calculatePayrollForMonth({ gross, absentDays = 0, leaveDays = 0, halfDays = 0, standardDeductions = 0 }) {
+  const paidLeaveDays = Math.min(leaveDays, FREE_LEAVE_DAYS_PER_MONTH);
+  const chargeableAbsentDays = Math.max(0, absentDays - paidLeaveDays);
+  const deductionDays = chargeableAbsentDays + (halfDays * 0.5);
+  const dailyRate = gross / PAYROLL_DAYS_PER_MONTH;
+  const attendanceDeduction = deductionDays * dailyRate;
+  const totalDeductions = standardDeductions + attendanceDeduction;
+  const net = gross - totalDeductions;
+  const paidDays = PAYROLL_DAYS_PER_MONTH - deductionDays;
+
+  return {
+    gross,
+    dailyRate,
+    paidLeaveDays,
+    chargeableAbsentDays,
+    deductionDays,
+    attendanceDeduction,
+    totalDeductions,
+    net,
+    paidDays,
+    totalDaysForSalary: PAYROLL_DAYS_PER_MONTH,
+  };
 }
 
 /**
@@ -50,4 +76,5 @@ function computeAttendanceDeduction({ gross, month, year, absentDays, leaveDays,
 module.exports = {
   computeGross, computeDeductions, computeNet,
   workingDaysInMonth, computeAttendanceDeduction, FREE_LEAVE_DAYS_PER_MONTH,
+  calculatePayrollForMonth, PAYROLL_DAYS_PER_MONTH,
 };
