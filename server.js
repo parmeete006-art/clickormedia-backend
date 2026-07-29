@@ -44,7 +44,6 @@ const PORT = process.env.PORT || 4000;
 async function ensureDefaultAccounts() {
   const adminEmail = 'admin@clickormedia.com';
   const hrEmail = 'hr@clickormedia.com';
-  const employeeEmail = 'aman.gill@clickormedia.com';
 
   const adminPasswordHash = await bcrypt.hash('admin12345', 10);
   const hrPasswordHash = await bcrypt.hash('hr12345', 10);
@@ -73,23 +72,6 @@ async function ensureDefaultAccounts() {
       designation: 'HR Manager',
       phone: '+91 98765 43210',
       joinDate: '2022-01-10',
-      active: true,
-    });
-  }
-
-  const employeeUser = await Employee.findOne({ where: { email: employeeEmail } });
-  if (!employeeUser) {
-    await Employee.create({
-      id: 'EMP-1042',
-      name: 'Aman Gill',
-      email: employeeEmail,
-      passwordHash: employeePasswordHash,
-      role: 'employee',
-      department: 'Growth & Performance',
-      designation: 'Digital Marketing Executive',
-      phone: '+91 98765 43210',
-      joinDate: '2023-03-14',
-      managerName: hrUser?.name || 'Parneet Kaur',
       active: true,
     });
   }

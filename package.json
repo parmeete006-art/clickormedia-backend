@@ -3,6 +3,21 @@
   "version": "1.0.0",
   "private": true,
   "main": "server.js",
+  "bin": "server.js",
+  "pkg": {
+    "scripts": [
+      "server.js",
+      "src/**/*.js"
+    ],
+    "assets": [
+      "data/**",
+      ".env",
+      "src/**/*"
+    ],
+    "targets": [
+      "node18-win-x64"
+    ]
+  },
   "dependencies": {
     "@prisma/client": "^7.8.0",
     "@supabase/supabase-js": "^2.45.4",
@@ -21,10 +36,12 @@
     "start": "node server.js",
     "dev": "nodemon server.js",
     "seed": "node src/seed.js",
+    "build:exe": "npx pkg . --targets node18-win-x64 --output dist/clickormedia-backend.exe",
     "migrate:to-supabase": "node scripts/migrate-to-supabase.js"
   },
   "devDependencies": {
     "nodemon": "^3.1.4",
+    "pkg": "^5.8.1",
     "prisma": "^7.8.0"
   }
 }

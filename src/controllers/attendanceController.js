@@ -48,22 +48,30 @@ async function syncAttendanceSequence() {
   }
 }
 
+async function getNextAttendanceId() {
+  const [rows] = await sequelize.query('SELECT COALESCE(MAX(id), 0) + 1 AS next_id FROM attendance');
+  return Number(rows[0]?.next_id || 1);
+}
+
 async function findOrCreateAttendanceRow(employeeId, date, defaults) {
+  const existing = await Attendance.findOne({ where: { employeeId, date } });
+  if (existing) return [existing, false];
+
   try {
     return await Attendance.findOrCreate({
       where: { employeeId, date },
       defaults,
     });
   } catch (error) {
-    const isIdCollision = error?.name === 'SequelizeUniqueConstraintError'
-      && error?.errors?.some((item) => item?.path === 'id');
-
-    if (!isIdCollision) throw error;
+    const isUniqueConstraint = error?.name === 'SequelizeUniqueConstraintError';
+    if (!isUniqueConstraint) throw error;
 
     await syncAttendanceSequence();
-    const existing = await Attendance.findOne({ where: { employeeId, date } });
-    if (existing) return [existing, false];
-    return await Attendance.create(defaults);
+    const existingAfter = await Attendance.findOne({ where: { employeeId, date } });
+    if (existingAfter) return [existingAfter, false];
+
+    const nextId = await getNextAttendanceId();
+    return [await Attendance.create({ ...defaults, id: nextId }), true];
   }
 }
 
