@@ -22,7 +22,7 @@ function computeNet(structure) {
 const PAYROLL_DAYS_PER_MONTH = 30;
 
 // One leave day is treated as a paid allowance.
-// Deductions apply only to absences (and half-days on absences).
+// One half-day is free; additional half-days are deducted at half salary.
 const FREE_LEAVE_DAYS_PER_MONTH = 1;
 
 /** Counts non-weekend calendar days in a given month (0-11), i.e. the days that count as "working days". */
@@ -62,7 +62,9 @@ function countSundaysInMonthForEmployee(month, year, joiningDate) {
 function calculatePayrollForMonth({ gross, absentDays = 0, leaveDays = 0, halfDays = 0, standardDeductions = 0, presentDays = 0, sundayDays = 0 }) {
   const paidLeaveDays = Math.min(leaveDays, FREE_LEAVE_DAYS_PER_MONTH);
   const chargeableAbsentDays = Math.max(0, absentDays - paidLeaveDays);
-  const deductionDays = chargeableAbsentDays + (halfDays * 0.5);
+  const freeHalfDays = Math.min(halfDays, 1);
+  const deductibleHalfDays = Math.max(0, halfDays - freeHalfDays);
+  const deductionDays = chargeableAbsentDays + (deductibleHalfDays * 0.5);
   const dailyRate = gross / PAYROLL_DAYS_PER_MONTH;
   const totalPaidDays = presentDays + sundayDays;
   const grossSalary = dailyRate * totalPaidDays;

@@ -129,6 +129,8 @@ async function generatePayslip(req, res) {
       absentDays++;
     } else if (record.status === 'Leave') {
       leaveDays++;
+    } else if (record.status === 'Half Day' || record.status === 'Half-Day' || record.status === 'half day' || record.status === 'half-day') {
+      halfDays++;
     } else if (record.status === 'Present' || record.status === 'Late') {
       if (record.checkIn && record.checkOut) {
         const duration = (new Date(record.checkOut) - new Date(record.checkIn)) / 1000 / 60 / 60;

@@ -6,7 +6,7 @@ const AuthUser = sequelize.define('AuthUser', {
   name: { type: DataTypes.STRING, allowNull: false },
   email: { type: DataTypes.STRING, allowNull: false, unique: true },
   passwordHash: { type: DataTypes.STRING, allowNull: false },
-  role: { type: DataTypes.ENUM('superadmin'), allowNull: false, defaultValue: 'superadmin' },
+  role: { type: DataTypes.ENUM('superadmin', 'hr'), allowNull: false, defaultValue: 'superadmin' },
   active: { type: DataTypes.BOOLEAN, defaultValue: true },
 }, {
   tableName: 'auth_users',
