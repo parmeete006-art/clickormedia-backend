@@ -6,24 +6,7 @@ const configuredDialect = process.env.DB_DIALECT || (process.env.DATABASE_URL ? 
 
 let sequelize;
 
-if (process.env.DATABASE_URL || configuredDialect === 'postgres') {
-  const parsedUrl = new URL(process.env.DATABASE_URL || 'postgres://localhost:5432/postgres');
-
-  sequelize = new Sequelize({
-    dialect: 'postgres',
-    host: parsedUrl.hostname,
-    port: Number(parsedUrl.port || 5432),
-    username: decodeURIComponent(parsedUrl.username),
-    password: decodeURIComponent(parsedUrl.password),
-    database: parsedUrl.pathname.replace(/^\/+/, ''),
-    logging: false,
-    dialectOptions: {
-      ssl: { require: true, rejectUnauthorized: false },
-      family: 4,
-    },
-    pool: { max: 5, min: 0, acquire: 60000, idle: 10000 },
-  });
-} else if (configuredDialect === 'sqlite') {
+if (configuredDialect === 'sqlite' || !process.env.DATABASE_URL) {
   sequelize = new Sequelize({
     dialect: 'sqlite',
     storage: process.env.DB_STORAGE || path.join(__dirname, '..', '..', 'data', 'clickormedia.sqlite'),
@@ -40,17 +23,22 @@ if (process.env.DATABASE_URL || configuredDialect === 'postgres') {
     },
   });
 } else {
-  sequelize = new Sequelize(
-    process.env.DB_NAME,
-    process.env.DB_USER,
-    process.env.DB_PASSWORD,
-    {
-      host: process.env.DB_HOST,
-      port: process.env.DB_PORT,
-      dialect: configuredDialect, 
-      logging: false,
-    }
-  );
+  const parsedUrl = new URL(process.env.DATABASE_URL);
+
+  sequelize = new Sequelize({
+    dialect: 'postgres',
+    host: parsedUrl.hostname,
+    port: Number(parsedUrl.port || 5432),
+    username: decodeURIComponent(parsedUrl.username),
+    password: decodeURIComponent(parsedUrl.password),
+    database: parsedUrl.pathname.replace(/^\/+/, ''),
+    logging: false,
+    dialectOptions: {
+      ssl: { require: true, rejectUnauthorized: false },
+      family: 4,
+    },
+    pool: { max: 5, min: 0, acquire: 60000, idle: 10000 },
+  });
 }
 
 module.exports = sequelize;
