@@ -1,5 +1,22 @@
-const { Document } = require('../models/index.js');
+const fs = require('fs');
+const path = require('path');
+const { Document, Employee } = require('../models/index.js');
 const { requireSupabase, DOCS_BUCKET } = require('../config/supabaseStorage.js');
+
+function sanitizeFileName(name) {
+  return path.basename(String(name || 'upload').replace(/\\/g, '/')) || 'upload';
+}
+
+async function saveUploadedFileToStorage(fileBuffer, fileMeta, options = {}) {
+  const storageRoot = options.storageRoot || path.join(__dirname, '..', 'uploads', 'documents');
+  const safeName = sanitizeFileName(fileMeta?.originalname || fileMeta?.name || 'upload');
+  const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+  const targetDir = storageRoot;
+  fs.mkdirSync(targetDir, { recursive: true });
+  const targetPath = path.join(targetDir, `${unique}-${safeName}`);
+  fs.writeFileSync(targetPath, fileBuffer);
+  return targetPath;
+}
 
 async function myDocuments(req, res) {
   const docs = await Document.findAll({ where: { employeeId: req.user.id }, order: [['createdAt', 'DESC']] });
@@ -18,29 +35,45 @@ async function allDocuments(req, res) {
 async function uploadDocument(req, res) {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
-  const targetEmployeeId = req.body.employeeId && ['hr', 'admin'].includes(req.user.role)
+  let targetEmployeeId = req.body.employeeId && ['hr', 'admin'].includes(req.user.role)
     ? req.body.employeeId
     : req.user.id;
 
-  // Storage key, e.g. "EMP-1042/1706438400000-payslip.pdf" — namespaced by
-  // employee so nobody can guess another employee's file path.
-  const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-  const storagePath = `${targetEmployeeId}/${unique}-${req.file.originalname}`;
+  const employee = await Employee.findByPk(targetEmployeeId);
+  if (!employee) {
+    targetEmployeeId = req.user.id;
+  }
 
-  const supabase = requireSupabase();
-  const { error: uploadError } = await supabase.storage
-    .from(DOCS_BUCKET)
-    .upload(storagePath, req.file.buffer, {
-      contentType: req.file.mimetype,
-      upsert: false,
+  const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+  const storagePath = `${targetEmployeeId}/${unique}-${sanitizeFileName(req.file.originalname)}`;
+
+  let savedPath = storagePath;
+  let usedLocalFallback = false;
+
+  try {
+    const supabase = requireSupabase();
+    const { error: uploadError } = await supabase.storage
+      .from(DOCS_BUCKET)
+      .upload(storagePath, req.file.buffer, {
+        contentType: req.file.mimetype,
+        upsert: false,
+      });
+
+    if (uploadError) {
+      throw uploadError;
+    }
+  } catch (storageError) {
+    savedPath = await saveUploadedFileToStorage(req.file.buffer, req.file, {
+      storageRoot: path.join(__dirname, '..', 'uploads', 'documents'),
     });
-  if (uploadError) return res.status(502).json({ error: `Storage upload failed: ${uploadError.message}` });
+    usedLocalFallback = true;
+  }
 
   const doc = await Document.create({
     employeeId: targetEmployeeId,
     name: req.body.name || req.file.originalname,
     category: req.body.category || 'Other',
-    filePath: storagePath,
+    filePath: usedLocalFallback ? savedPath : storagePath,
     fileSize: req.file.size,
     uploadedBy: ['hr', 'admin'].includes(req.user.role) ? `HR (${req.user.name})` : req.user.name,
   });
@@ -55,6 +88,10 @@ async function downloadDocument(req, res) {
   const isOwner = doc.employeeId === req.user.id;
   const isHr = ['hr', 'admin'].includes(req.user.role);
   if (!isOwner && !isHr) return res.status(403).json({ error: 'Not authorized to access this document' });
+
+  if (fs.existsSync(doc.filePath)) {
+    return res.download(doc.filePath, doc.name);
+  }
 
   const supabase = requireSupabase();
   // Short-lived signed URL — bucket stays private, this backend is still the
@@ -74,10 +111,15 @@ async function deleteDocument(req, res) {
   const isHr = ['hr', 'admin'].includes(req.user.role);
   if (!isHr) return res.status(403).json({ error: 'Not authorized to delete this document' });
 
-  const supabase = requireSupabase();
-  await supabase.storage.from(DOCS_BUCKET).remove([doc.filePath]);
+  if (fs.existsSync(doc.filePath)) {
+    fs.unlinkSync(doc.filePath);
+  } else {
+    const supabase = requireSupabase();
+    await supabase.storage.from(DOCS_BUCKET).remove([doc.filePath]);
+  }
+
   await doc.destroy();
   res.json({ ok: true });
 }
 
-module.exports = { myDocuments, allDocuments, uploadDocument, downloadDocument, deleteDocument };
+module.exports = { myDocuments, allDocuments, uploadDocument, downloadDocument, deleteDocument, saveUploadedFileToStorage };
