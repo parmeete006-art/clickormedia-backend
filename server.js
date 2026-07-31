@@ -16,7 +16,13 @@ const announcementRoutes = require('./src/routes/announcements.js');
 
 const app = express();
 
-app.use(cors());
+app.use(cors({
+  origin: true,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
+app.options('*', cors());
 app.use(express.json());
 
 app.get('/api/health', (req, res) => res.json({ ok: true, service: 'clickor-media-backend' }));
@@ -41,6 +47,36 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 4000;
 
+async function ensureDefaultAccounts() {
+  const defaultEmail = 'admin@clickormedia.com';
+  const existingAdmin = await AuthUser.findOne({ where: { email: defaultEmail } });
+
+  if (!existingAdmin) {
+    const passwordHash = await bcrypt.hash('admin12345', 10);
+    await AuthUser.create({
+      name: 'Super Admin',
+      email: defaultEmail,
+      passwordHash,
+      role: 'superadmin',
+      active: true,
+    });
+  }
+
+  const employeeCount = await Employee.count();
+  if (employeeCount === 0) {
+    const employeePasswordHash = await bcrypt.hash('password123', 10);
+    await Employee.create({
+      id: 'EMP-1000',
+      name: 'Default Employee',
+      email: 'employee@clickormedia.com',
+      passwordHash: employeePasswordHash,
+      role: 'employee',
+      department: 'General',
+      designation: 'Employee',
+      active: true,
+    });
+  }
+}
 
 async function initializeDatabase() {
   const maxAttempts = 5;

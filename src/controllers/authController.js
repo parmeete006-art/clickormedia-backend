@@ -20,9 +20,14 @@ async function login(req, res) {
   const valid = await bcrypt.compare(password, user.passwordHash);
   if (!valid) return res.status(401).json({ error: 'Invalid email or password' });
 
+  const jwtSecret = process.env.JWT_SECRET;
+  if (!jwtSecret) {
+    return res.status(500).json({ error: 'Server authentication is not configured' });
+  }
+
   const token = jwt.sign(
     { id: user.id, email: user.email, role: user.role, name: user.name, source },
-    process.env.JWT_SECRET,
+    jwtSecret,
     { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
   );
 
