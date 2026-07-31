@@ -1,6 +1,6 @@
 const { Op } = require('sequelize');
 const { SalaryStructure, Payslip, Employee, Attendance } = require('../models/index.js');
-const { computeGross, computeDeductions, computeNet, computeAttendanceDeduction, workingDaysInMonth, calculatePayrollForMonth, PAYROLL_DAYS_PER_MONTH, countSundaysInMonthForEmployee } = require('../utils/payroll.js');
+const { computeGross, computeDeductions, computeNet, calculatePayrollForMonth, getPayrollDaysInMonth } = require('../utils/payroll.js');
 
 function withTotals(structure) {
   const s = structure.toJSON ? structure.toJSON() : structure;
@@ -9,9 +9,11 @@ function withTotals(structure) {
 
 function enrichPayslip(row) {
   const p = row.toJSON ? row.toJSON() : row;
-  const workingDays = PAYROLL_DAYS_PER_MONTH;
-  const dailyRate = Number(p.gross || 0) / PAYROLL_DAYS_PER_MONTH;
-  return { ...p, workingDays, dailyRate };
+  const daysInMonth = p.year !== undefined && p.month !== undefined
+    ? getPayrollDaysInMonth(Number(p.month), Number(p.year))
+    : 30;
+  const dailyRate = Number(p.gross || 0) / Math.max(daysInMonth, 1);
+  return { ...p, workingDays: daysInMonth, dailyRate };
 }
 
 async function mySalary(req, res) {
@@ -155,6 +157,8 @@ async function generatePayslip(req, res) {
     standardDeductions,
     presentDays,
     sundayDays,
+    month: monthIndex,
+    year: Number(year),
   });
 
   const payload = {

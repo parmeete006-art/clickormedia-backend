@@ -19,11 +19,11 @@ function computeNet(structure) {
   return computeGross(structure) - computeDeductions(structure);
 }
 
-const PAYROLL_DAYS_PER_MONTH = 30;
-
-// One leave day is treated as a paid allowance.
-// One half-day is free; additional half-days are deducted at half salary.
 const FREE_LEAVE_DAYS_PER_MONTH = 1;
+
+function getPayrollDaysInMonth(month, year) {
+  return new Date(year, month + 1, 0).getDate();
+}
 
 /** Counts non-weekend calendar days in a given month (0-11), i.e. the days that count as "working days". */
 function workingDaysInMonth(month, year) {
@@ -59,13 +59,14 @@ function countSundaysInMonthForEmployee(month, year, joiningDate) {
   return count;
 }
 
-function calculatePayrollForMonth({ gross, absentDays = 0, leaveDays = 0, halfDays = 0, standardDeductions = 0, presentDays = 0, sundayDays = 0 }) {
+function calculatePayrollForMonth({ gross, absentDays = 0, leaveDays = 0, halfDays = 0, standardDeductions = 0, presentDays = 0, sundayDays = 0, month, year }) {
   const paidLeaveDays = Math.min(leaveDays, FREE_LEAVE_DAYS_PER_MONTH);
   const chargeableAbsentDays = Math.max(0, absentDays - paidLeaveDays);
   const freeHalfDays = Math.min(halfDays, 1);
   const deductibleHalfDays = Math.max(0, halfDays - freeHalfDays);
   const deductionDays = chargeableAbsentDays + (deductibleHalfDays * 0.5);
-  const dailyRate = gross / PAYROLL_DAYS_PER_MONTH;
+  const daysInMonth = month !== undefined && year !== undefined ? getPayrollDaysInMonth(month, year) : 30;
+  const dailyRate = gross / daysInMonth;
   const totalPaidDays = presentDays + sundayDays;
   const grossSalary = dailyRate * totalPaidDays;
   const attendanceDeduction = deductionDays * dailyRate;
@@ -82,7 +83,7 @@ function calculatePayrollForMonth({ gross, absentDays = 0, leaveDays = 0, halfDa
     totalDeductions,
     net,
     paidDays: totalPaidDays,
-    totalDaysForSalary: PAYROLL_DAYS_PER_MONTH,
+    totalDaysForSalary: daysInMonth,
     presentDays,
     sundayDays,
   };
@@ -104,5 +105,5 @@ function computeAttendanceDeduction({ gross, month, year, absentDays, leaveDays,
 module.exports = {
   computeGross, computeDeductions, computeNet,
   workingDaysInMonth, computeAttendanceDeduction, FREE_LEAVE_DAYS_PER_MONTH,
-  calculatePayrollForMonth, PAYROLL_DAYS_PER_MONTH, countSundaysInMonthForEmployee,
+  calculatePayrollForMonth, getPayrollDaysInMonth, countSundaysInMonthForEmployee,
 };

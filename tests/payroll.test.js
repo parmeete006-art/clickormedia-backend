@@ -1,8 +1,12 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { calculatePayrollForMonth, countSundaysInMonthForEmployee, PAYROLL_DAYS_PER_MONTH } = require('../src/utils/payroll.js');
+const { calculatePayrollForMonth, countSundaysInMonthForEmployee, getPayrollDaysInMonth } = require('../src/utils/payroll.js');
 
-test('uses a fixed 30-day month for payroll calculations', () => {
+function assertApproxEqual(actual, expected, tolerance = 0.001) {
+  assert.ok(Math.abs(actual - expected) <= tolerance, `Expected ${expected} but got ${actual}`);
+}
+
+test('uses the actual number of days in the selected month for payroll calculations', () => {
   const result = calculatePayrollForMonth({
     gross: 30000,
     absentDays: 2,
@@ -10,16 +14,20 @@ test('uses a fixed 30-day month for payroll calculations', () => {
     halfDays: 1,
     presentDays: 20,
     sundayDays: 4,
+    month: 1,
+    year: 2024,
   });
 
-  assert.equal(PAYROLL_DAYS_PER_MONTH, 30);
-  assert.equal(result.dailyRate, 1000);
+  const daysInMonth = getPayrollDaysInMonth(1, 2024);
+  assert.equal(daysInMonth, 29);
+  assert.equal(result.totalDaysForSalary, 29);
+  assertApproxEqual(result.dailyRate, 30000 / 29);
   assert.equal(result.chargeableAbsentDays, 1);
   assert.equal(result.deductionDays, 1);
-  assert.equal(result.attendanceDeduction, 1000);
+  assertApproxEqual(result.attendanceDeduction, 30000 / 29);
   assert.equal(result.paidDays, 24);
-  assert.equal(result.gross, 24000);
-  assert.equal(result.net, 23000);
+  assertApproxEqual(result.gross, 24827.5862);
+  assertApproxEqual(result.net, 23793.1034);
 });
 
 test('counts Sundays only from the employee joining date', () => {
@@ -35,9 +43,11 @@ test('allows one half day free and deducts only additional half days', () => {
     halfDays: 2,
     presentDays: 20,
     sundayDays: 4,
+    month: 1,
+    year: 2025,
   });
 
   assert.equal(result.deductionDays, 0.5);
-  assert.equal(result.attendanceDeduction, 500);
-  assert.equal(result.net, 23500);
+  assertApproxEqual(result.attendanceDeduction, 535.7143);
+  assertApproxEqual(result.net, 25178.5714);
 });
