@@ -9,8 +9,10 @@ const Attendance = sequelize.define('Attendance', {
   checkOut: DataTypes.DATE,
   checkInLat: DataTypes.FLOAT,
   checkInLng: DataTypes.FLOAT,
+  checkInAddress: DataTypes.TEXT,
   checkOutLat: DataTypes.FLOAT,
   checkOutLng: DataTypes.FLOAT,
+  checkOutAddress: DataTypes.TEXT,
   status: { type: DataTypes.ENUM('Present', 'Absent', 'Late', 'Leave', 'Weekend', 'Holiday'), defaultValue: 'Present' },
   source: { type: DataTypes.ENUM('manual', 'biometric-device', 'admin'), defaultValue: 'manual' },
 }, {

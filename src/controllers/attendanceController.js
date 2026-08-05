@@ -109,6 +109,7 @@ async function checkIn(req, res) {
     checkIn: now,
     checkInLat: location?.latitude || null,
     checkInLng: location?.longitude || null,
+    checkInAddress: location?.address || null,
     status: getAttendanceStatus(now, null),
     source: 'manual',
   });
@@ -117,6 +118,7 @@ async function checkIn(req, res) {
       checkIn: now,
       checkInLat: location?.latitude || null,
       checkInLng: location?.longitude || null,
+      checkInAddress: location?.address || null,
       status: getAttendanceStatus(now, row.checkOut),
       source: 'manual',
     });
@@ -134,6 +136,7 @@ async function checkOut(req, res) {
     checkOut: now,
     checkOutLat: location?.latitude || null,
     checkOutLng: location?.longitude || null,
+    checkOutAddress: location?.address || null,
     status: getAttendanceStatus(row.checkIn, now),
   });
   res.json(row);
@@ -241,7 +244,7 @@ async function biometricWebhook(req, res) {
  * biometric device missed a punch, or someone forgot to check out.
  */
 async function upsertAttendance(req, res) {
-  const { employeeId, date, status, checkIn, checkOut, checkInLat, checkInLng, checkOutLat, checkOutLng } = req.body;
+  const { employeeId, date, status, checkIn, checkOut, checkInLat, checkInLng, checkInAddress, checkOutLat, checkOutLng, checkOutAddress } = req.body;
   if (!employeeId || !date || !status) {
     return res.status(400).json({ error: 'employeeId, date, and status are required' });
   }
@@ -259,8 +262,10 @@ async function upsertAttendance(req, res) {
     checkOut: checkOut ? new Date(checkOut) : row.checkOut,
     checkInLat: typeof checkInLat === 'number' ? checkInLat : row.checkInLat,
     checkInLng: typeof checkInLng === 'number' ? checkInLng : row.checkInLng,
+    checkInAddress: typeof checkInAddress === 'string' ? checkInAddress : row.checkInAddress,
     checkOutLat: typeof checkOutLat === 'number' ? checkOutLat : row.checkOutLat,
     checkOutLng: typeof checkOutLng === 'number' ? checkOutLng : row.checkOutLng,
+    checkOutAddress: typeof checkOutAddress === 'string' ? checkOutAddress : row.checkOutAddress,
     source: 'admin',
   });
 
