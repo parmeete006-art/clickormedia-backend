@@ -27,7 +27,7 @@ Employee.hasMany(Payslip, { foreignKey: 'employeeId', sourceKey: 'id' });
 Payslip.belongsTo(Employee, { foreignKey: 'employeeId', targetKey: 'id' });
 
 async function syncDatabase() {
-  await sequelize.sync(); // creates tables if they don't exist yet
+  await sequelize.sync(process.env.NODE_ENV === 'production' ? {} : { alter: true });
 }
 
 module.exports = {

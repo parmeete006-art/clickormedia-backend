@@ -7,6 +7,10 @@ const Attendance = sequelize.define('Attendance', {
   date: { type: DataTypes.DATEONLY, allowNull: false }, // YYYY-MM-DD, one row per employee per day
   checkIn: DataTypes.DATE,
   checkOut: DataTypes.DATE,
+  checkInLat: DataTypes.FLOAT,
+  checkInLng: DataTypes.FLOAT,
+  checkOutLat: DataTypes.FLOAT,
+  checkOutLng: DataTypes.FLOAT,
   status: { type: DataTypes.ENUM('Present', 'Absent', 'Late', 'Leave', 'Weekend', 'Holiday'), defaultValue: 'Present' },
   source: { type: DataTypes.ENUM('manual', 'biometric-device', 'admin'), defaultValue: 'manual' },
 }, {

@@ -102,15 +102,24 @@ async function myAttendance(req, res) {
 async function checkIn(req, res) {
   const now = new Date();
   const date = toDateKey(now);
+  const location = req.body?.location || null;
   const [row] = await findOrCreateAttendanceRow(req.user.id, date, {
     employeeId: req.user.id,
     date,
     checkIn: now,
+    checkInLat: location?.latitude || null,
+    checkInLng: location?.longitude || null,
     status: getAttendanceStatus(now, null),
     source: 'manual',
   });
   if (!row.checkIn) {
-    await row.update({ checkIn: now, status: getAttendanceStatus(now, row.checkOut), source: 'manual' });
+    await row.update({
+      checkIn: now,
+      checkInLat: location?.latitude || null,
+      checkInLng: location?.longitude || null,
+      status: getAttendanceStatus(now, row.checkOut),
+      source: 'manual',
+    });
   }
   res.json(row);
 }
@@ -118,9 +127,15 @@ async function checkIn(req, res) {
 async function checkOut(req, res) {
   const now = new Date();
   const date = toDateKey(now);
+  const location = req.body?.location || null;
   const row = await Attendance.findOne({ where: { employeeId: req.user.id, date } });
   if (!row) return res.status(400).json({ error: 'Check in before checking out' });
-  await row.update({ checkOut: now, status: getAttendanceStatus(row.checkIn, now) });
+  await row.update({
+    checkOut: now,
+    checkOutLat: location?.latitude || null,
+    checkOutLng: location?.longitude || null,
+    status: getAttendanceStatus(row.checkIn, now),
+  });
   res.json(row);
 }
 
@@ -226,7 +241,7 @@ async function biometricWebhook(req, res) {
  * biometric device missed a punch, or someone forgot to check out.
  */
 async function upsertAttendance(req, res) {
-  const { employeeId, date, status, checkIn, checkOut } = req.body;
+  const { employeeId, date, status, checkIn, checkOut, checkInLat, checkInLng, checkOutLat, checkOutLng } = req.body;
   if (!employeeId || !date || !status) {
     return res.status(400).json({ error: 'employeeId, date, and status are required' });
   }
@@ -242,6 +257,10 @@ async function upsertAttendance(req, res) {
     status,
     checkIn: checkIn ? new Date(checkIn) : row.checkIn,
     checkOut: checkOut ? new Date(checkOut) : row.checkOut,
+    checkInLat: typeof checkInLat === 'number' ? checkInLat : row.checkInLat,
+    checkInLng: typeof checkInLng === 'number' ? checkInLng : row.checkInLng,
+    checkOutLat: typeof checkOutLat === 'number' ? checkOutLat : row.checkOutLat,
+    checkOutLng: typeof checkOutLng === 'number' ? checkOutLng : row.checkOutLng,
     source: 'admin',
   });
 

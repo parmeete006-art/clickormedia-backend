@@ -67,7 +67,7 @@ function calculatePayrollForMonth({ gross, absentDays = 0, leaveDays = 0, halfDa
   const deductionDays = chargeableAbsentDays + (deductibleHalfDays * 0.5);
   const daysInMonth = month !== undefined && year !== undefined ? getPayrollDaysInMonth(month, year) : 30;
   const dailyRate = gross / daysInMonth;
-  const totalPaidDays = presentDays + sundayDays;
+  const totalPaidDays = presentDays + sundayDays + paidLeaveDays;
   const grossSalary = dailyRate * totalPaidDays;
   const attendanceDeduction = deductionDays * dailyRate;
   const totalDeductions = standardDeductions + attendanceDeduction;
